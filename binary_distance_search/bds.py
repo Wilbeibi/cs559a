@@ -81,17 +81,16 @@ def mnist_dist(s1,s2):
   sum_sq_err = np.sum(np.power(s1[0] - s2[0],2))
   return sum_sq_err
 
-if __name__=="__main__":
-
-  "load some data"
-  f = gzip.open("/home/cmerck/proj/deepl/DeepLearningTutorials/data/mnist.pkl.gz",'rb')
-  train_set, valid_set, test_set = cPickle.load(f)
-  f.close()
+def compare_1nn_sbst(n_train,n_test):
 
   bdt = BinDistTree(mnist_dist)
 
+  print
+  print "************************"
+  print
+  print "n_train=%d, n_test=%d" % (n_train,n_test)
   print "Training...",
-  n_train = 1000
+  #n_train = 10000
   for i in range(n_train):
     s = [train_set[0][i], train_set[1][i]] # [img, lbl]
     bdt.walk(s)
@@ -101,7 +100,7 @@ if __name__=="__main__":
   print "DONE"
 
   print "Testing..."
-  n_test = 200 #len(test_set[0])
+  #n_test = 200 #len(test_set[0])
   n_correct = 0
   n_correct_global = 0
   n_disteval = 0
@@ -114,21 +113,25 @@ if __name__=="__main__":
     c = neighs[0][1] # use nearest neighbor discovered
     if s[1] == c:
       n_correct += 1
-      n_correct_global += 1 # assume global is correct
-    else:
-      # find exact match
-      dmin = 10000
-      for j in range(n_train):
-        sj = [train_set[0][j], train_set[1][j]] # [img, lbl]
-        dj = mnist_dist(s,sj)
-        n_disteval_global+=1
-        if dj < dmin:
-          dmin = dj
-          c_global = sj[1]
-      if c_global == s[1]:
-        n_correct_global += 1
-  print "Accuracy: %1.02f, Evals: %d" % (n_correct*100./n_test,n_disteval)
-  print "Global Accuracy: %1.02f, Evals: %d" % (n_correct_global*100./n_test,n_disteval_global)
+    # now try 1nn 
+    dmin = 10000
+    for j in range(evals_this_step): #n_train):
+      sj = [train_set[0][j], train_set[1][j]] # [img, lbl]
+      dj = mnist_dist(s,sj)
+      n_disteval_global += 1
+      if dj < dmin:
+        dmin = dj
+        c_global = sj[1]
+    if c_global == s[1]:
+      n_correct_global += 1
+  sbst_acc = n_correct*100./n_test
+  nn_acc = n_correct_global*100./n_test
+  avg_evals = n_disteval / float(n_test)
+  print "SBST Accuracy: %1.02f" % (sbst_acc)
+  print "1NN Accuracy: %1.02f" % (nn_acc)
+  print "Avg Evals: %1.02f" % (avg_evals)
+
+  return {'sbst_acc':sbst_acc, 'nn_acc':nn_acc, 'avg_evals':avg_evals}
 
   """
   print "Inserting %d:" % s[1]
@@ -143,3 +146,24 @@ if __name__=="__main__":
       tile_spacing=(1, 1))
   image.save('mnist_data.png')
   call(['eog','mnist_data.png'])"""
+
+
+if __name__=="__main__":
+
+  "load some data"
+  f = gzip.open("/home/cmerck/proj/deepl/DeepLearningTutorials/data/mnist.pkl.gz",'rb')
+  train_set, valid_set, test_set = cPickle.load(f)
+  f.close()
+
+
+  X = [10,30,100,300,1000,3000]
+  Y1=[]
+  Y2=[]
+  Y3=[]
+  for n_train in X:
+    r = compare_1nn_sbst(n_train,1000)
+    Y1.append(r['sbst_acc'])
+    Y2.append(r['nn_acc'])
+    Y3.append(r['avg_evals'])
+
+
