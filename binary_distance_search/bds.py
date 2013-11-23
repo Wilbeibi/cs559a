@@ -46,6 +46,8 @@ class BinDistTree(object):
       returning the k nearest neighbors
       from the insertion path """
 
+    n_disteval = 0
+
     neighboors = []
 
     "start at root"
@@ -54,16 +56,18 @@ class BinDistTree(object):
       "choose nearest child"
       D_l = self.D(sample,v.left.data)
       D_r = self.D(sample,v.right.data)
+      n_disteval += 2
       if D_l < D_r:
         v = v.left
       else:
         v = v.right
       neighboors.append((v.data,min(D_l,D_r)))
+
     if insert:
       "insert"
       v.add_child(sample)
 
-    return neighboors #[-k]
+    return (neighboors, n_disteval) #[-k]
 
 def knn(k,S):
   s = sorted(S, key=lambda n: n[1])
@@ -84,11 +88,10 @@ if __name__=="__main__":
   train_set, valid_set, test_set = cPickle.load(f)
   f.close()
 
-'''
   bdt = BinDistTree(mnist_dist)
 
   print "Training...",
-  n_train = 100
+  n_train = 1000
   for i in range(n_train):
     s = [train_set[0][i], train_set[1][i]] # [img, lbl]
     bdt.walk(s)
@@ -101,9 +104,12 @@ if __name__=="__main__":
   n_test = 200 #len(test_set[0])
   n_correct = 0
   n_correct_global = 0
+  n_disteval = 0
+  n_disteval_global = 0
   for i in range(n_test):
     s = (test_set[0][i], test_set[1][i])
-    path = bdt.walk(s,insert=False)
+    (path,evals_this_step) = bdt.walk(s,insert=False)
+    n_disteval += evals_this_step
     neighs = knn(1,path)
     c = neighs[0][1] # use nearest neighbor discovered
     if s[1] == c:
@@ -115,13 +121,14 @@ if __name__=="__main__":
       for j in range(n_train):
         sj = [train_set[0][j], train_set[1][j]] # [img, lbl]
         dj = mnist_dist(s,sj)
+        n_disteval_global+=1
         if dj < dmin:
           dmin = dj
           c_global = sj[1]
       if c_global == s[1]:
         n_correct_global += 1
-  print "Accuracy: %1.02f" % (n_correct*100./n_test)
-  print "Global Accuracy: %1.02f" % (n_correct_global*100./n_test)
+  print "Accuracy: %1.02f, Evals: %d" % (n_correct*100./n_test,n_disteval)
+  print "Global Accuracy: %1.02f, Evals: %d" % (n_correct_global*100./n_test,n_disteval_global)
 
   """
   print "Inserting %d:" % s[1]
@@ -136,4 +143,3 @@ if __name__=="__main__":
       tile_spacing=(1, 1))
   image.save('mnist_data.png')
   call(['eog','mnist_data.png'])"""
-'''
